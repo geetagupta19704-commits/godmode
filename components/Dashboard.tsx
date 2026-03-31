@@ -1,4 +1,3 @@
-"use client";
 import { useState, useCallback, useMemo } from "react";
 
 // ============================================================
@@ -25,7 +24,7 @@ const SEC_RULES = [
   { id: "sqli-cat", p: /["']SELECT\s+.*FROM\s+.*["']\s*\+/gi, sev: "CRIT", t: "SQL String Concatenation", f: "Use ORM or parameterized queries" },
   { id: "xss-inner", p: /dangerouslySetInnerHTML\s*=\s*\{\s*\{\s*__html/g, sev: "CRIT", t: "dangerouslySetInnerHTML (XSS)", f: "Use DOMPurify.sanitize()" },
   { id: "eval", p: /\beval\s*\(/g, sev: "CRIT", t: "eval() — Code Injection", f: "Use JSON.parse or safer alternatives" },
-  { id: "doc-write", p: /document\.write\s*\(/g, sev: "CRIT", t: "document.write() (XSS)", f: "Use DOM methods or React JSX" },
+  { id: "doc-write", p: /document\.write\s*\(/g, sev: "HIGH", t: "document.write() (XSS)", f: "Use DOM methods or React JSX" },
   { id: "innerHTML", p: /\.innerHTML\s*=\s*[^"'`\s]/g, sev: "HIGH", t: "Direct innerHTML Assignment", f: "Use textContent or DOMPurify" },
   { id: "cors-wild", p: /cors\s*\(\s*\)|['"]\*['"]\s*.*(?:origin|Access-Control)/gi, sev: "HIGH", t: "CORS Wildcard (*)", f: "Specify exact allowed origins" },
   { id: "md5", p: /createHash\s*\(\s*["'`]md5["'`]\)/g, sev: "HIGH", t: "MD5 Hash (Broken)", f: "Use bcrypt/argon2 for passwords, SHA-256 for hashing" },
@@ -58,7 +57,7 @@ const REV_RULES = [
   { id: "hc-url", p: /(?:fetch|axios)\s*\(\s*["'`]https?:\/\/(?!localhost)/g, cat: "MAINT", imp: "MED", t: "Hardcoded URL", s: "Use environment variables" },
 ];
 
-function runSecurityScan(code: any) {
+function runSecurityScan(code: string) {
   const findings = [];
   const lines = code.split("\n");
   for (const rule of SEC_RULES) {
@@ -76,7 +75,7 @@ function runSecurityScan(code: any) {
   return findings;
 }
 
-function runCodeReview(code: any) {
+function runCodeReview(code: string) {
   const findings = [];
   const lines = code.split("\n");
   for (const rule of REV_RULES) {
@@ -95,7 +94,7 @@ function runCodeReview(code: any) {
   return findings;
 }
 
-function getCodeMetrics(code: any) {
+function getCodeMetrics(code: string) {
   const lines = code.split("\n");
   const total = lines.length;
   const codeLines = lines.filter((l: string) => l.trim() && !l.trim().startsWith("//")).length;
@@ -114,7 +113,14 @@ const TECH = {
 const AUTH_OPTS = ["Email/Password", "OAuth Google", "OAuth GitHub", "Magic Link", "JWT", "API Key", "None"];
 const SEC_CHECKS = ["CSRF", "XSS Prevention", "SQL Injection", "Rate Limiting", "CORS Config", "Security Headers", "Encryption", "RBAC", "Secret Management", "Audit Logging"];
 
-const Badge = ({ children, selected, color = "#6366f1", onClick }: any) => (
+interface BadgeProps {
+  children: React.ReactNode;
+  selected: boolean;
+  color?: string;
+  onClick: () => void;
+}
+
+const Badge = ({ children, selected, color = "#6366f1", onClick }: BadgeProps) => (
   <button onClick={onClick} style={{
     padding: "5px 12px", borderRadius: "16px", fontSize: "12px", fontWeight: 500, cursor: "pointer",
     border: selected ? `2px solid ${color}` : "1px solid #334155",
@@ -138,14 +144,14 @@ export default function GodModeDashboard() {
     edgeCases: "", errorHandling: "",
   });
 
-  const update = useCallback((k: any, v: any) => setSpec(p => ({ ...p, [k]: v })), []);
-  const toggleArr = useCallback((k: any, v: any) => setSpec(p => ({
-    ...p, [k]: (p as any)[k].includes(v) ? (p as any)[k].filter((x: any) => x !== v) : [...(p as any)[k], v],
+  const update = useCallback((k: string, v: string) => setSpec(p => ({ ...p, [k]: v })), []);
+  const toggleArr = useCallback((k: "auth" | "security", v: string) => setSpec(p => ({
+    ...p, [k]: p[k].includes(v) ? p[k].filter((x: string) => x !== v) : [...p[k], v],
   })), []);
 
   const specScore = useMemo(() => {
     let s = 0, t = 0;
-    const c = (v: any, w = 1) => { t += w; if (v && (typeof v === "string" ? v.trim() : v.length)) s += w; };
+    const c = (v: string | string[], w = 1) => { t += w; if (v && (typeof v === "string" ? v.trim() : v.length)) s += w; };
     c(spec.name); c(spec.type); c(spec.desc); c(spec.frontend); c(spec.backend); c(spec.database);
     c(spec.auth); c(spec.security, 2); c(spec.edgeCases); c(spec.errorHandling);
     return Math.round((s / t) * 100);
@@ -192,7 +198,19 @@ export default function GodModeDashboard() {
 
   const [copied, setCopied] = useState(false);
   const copySpec = useCallback(() => {
-    navigator.clipboard.writeText(specJSON).then(() => { setCopied(true); setTimeout(() => setCopied(false), 2000); });
+    if (navigator.clipboard?.writeText) {
+      navigator.clipboard.writeText(specJSON).then(() => { setCopied(true); setTimeout(() => setCopied(false), 2000); }).catch(() => {
+        // Fallback for older browsers
+        const textarea = document.createElement("textarea");
+        textarea.value = specJSON;
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand("copy");
+        document.body.removeChild(textarea);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+      });
+    }
   }, [specJSON]);
 
   const sevColor = { CRIT: "#ef4444", HIGH: "#f97316", MED: "#f59e0b", LOW: "#3b82f6" };
@@ -275,15 +293,15 @@ export default function GodModeDashboard() {
               </div>
             </div>
 
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px", marginBottom: "16px" }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "12px", marginBottom: "16px" }}>
               <div>
                 <label style={{ display: "block", fontSize: "11px", fontWeight: 600, color: "#64748b", marginBottom: "4px", textTransform: "uppercase" }}>Project Name</label>
-                <input value={spec.name} onChange={e => update("name", e.target.value)} placeholder="e.g., TaskFlow"
+                <input value={spec.name} onChange={e => update("name", e.target.value)} placeholder="e.g., TaskFlow" maxLength={100}
                   style={{ width: "100%", padding: "8px 12px", borderRadius: "8px", border: "1px solid #334155", background: "#020617", color: "#e2e8f0", fontSize: "13px", outline: "none" }} />
               </div>
               <div>
                 <label style={{ display: "block", fontSize: "11px", fontWeight: 600, color: "#64748b", marginBottom: "4px", textTransform: "uppercase" }}>Description</label>
-                <input value={spec.desc} onChange={e => update("desc", e.target.value)} placeholder="What does it do?"
+                <input value={spec.desc} onChange={e => update("desc", e.target.value)} placeholder="What does it do?" maxLength={300}
                   style={{ width: "100%", padding: "8px 12px", borderRadius: "8px", border: "1px solid #334155", background: "#020617", color: "#e2e8f0", fontSize: "13px", outline: "none" }} />
               </div>
             </div>
@@ -297,14 +315,14 @@ export default function GodModeDashboard() {
               <div key={cat} style={{ marginBottom: "12px" }}>
                 <label style={{ display: "block", fontSize: "11px", fontWeight: 600, color: "#64748b", marginBottom: "6px", textTransform: "uppercase" }}>{cat}</label>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
-                  {opts.map((o: any) => <Badge key={o} selected={(spec as any)[cat] === o} color="#22c55e" onClick={() => update(cat, o)}>{o}</Badge>)}
+                  {opts.map((o: string) => <Badge key={o} selected={spec[cat as keyof typeof spec] === o} color="#22c55e" onClick={() => update(cat, o)}>{o}</Badge>)}
                 </div>
               </div>
             ))}
 
             <label style={{ display: "block", fontSize: "11px", fontWeight: 600, color: "#64748b", marginBottom: "6px", textTransform: "uppercase" }}>Authentication</label>
             <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", marginBottom: "14px" }}>
-              {AUTH_OPTS.map((a: any) => <Badge key={a} selected={spec.auth.includes(a)} color="#8b5cf6" onClick={() => toggleArr("auth", a)}>{a}</Badge>)}
+              {AUTH_OPTS.map((a: string) => <Badge key={a} selected={spec.auth.includes(a)} color="#8b5cf6" onClick={() => toggleArr("auth", a)}>{a}</Badge>)}
             </div>
 
             <label style={{ display: "block", fontSize: "11px", fontWeight: 600, color: "#64748b", marginBottom: "6px", textTransform: "uppercase" }}>Security Requirements</label>
@@ -312,7 +330,7 @@ export default function GodModeDashboard() {
               {SEC_CHECKS.map(s => <Badge key={s} selected={spec.security.includes(s)} color="#ef4444" onClick={() => toggleArr("security", s)}>{s}</Badge>)}
             </div>
 
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px", marginBottom: "16px" }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "12px", marginBottom: "16px" }}>
               <div>
                 <label style={{ display: "block", fontSize: "11px", fontWeight: 600, color: "#64748b", marginBottom: "4px", textTransform: "uppercase" }}>Edge Cases</label>
                 <textarea value={spec.edgeCases} onChange={e => update("edgeCases", e.target.value)} placeholder="What could go wrong?"
@@ -356,7 +374,7 @@ export default function GodModeDashboard() {
             <label style={{ display: "block", fontSize: "11px", fontWeight: 600, color: "#64748b", marginBottom: "6px", textTransform: "uppercase" }}>Paste AI-Generated Code Here</label>
             <textarea value={code} onChange={e => { setCode(e.target.value); setHasScanned(false); setHasReviewed(false); }}
               placeholder="Paste the code that AI generated from your spec..."
-              rows={12} style={{
+              rows={12} maxLength={50000} aria-label="Paste AI-generated code here" style={{
                 width: "100%", padding: "14px", borderRadius: "10px", border: "1px solid #1e293b",
                 background: "#020617", color: "#e2e8f0", fontSize: "13px", fontFamily: "'JetBrains Mono', monospace",
                 resize: "vertical", outline: "none", lineHeight: 1.6, marginBottom: "12px",
@@ -392,8 +410,8 @@ export default function GodModeDashboard() {
               <div style={{ marginBottom: "16px" }}>
                 {/* Severity Summary */}
                 <div style={{ display: "flex", gap: "8px", marginBottom: "12px" }}>
-                  {["CRIT", "HIGH", "MED"].map((sev: any) => {
-                    const count = secFindings.filter((f: any) => f.sev === sev).length;
+                  {(["CRIT", "HIGH", "MED"] as const).map((sev) => {
+                    const count = secFindings.filter((f) => f.sev === sev).length;
                     return count > 0 ? (
                       <div key={sev} style={{ padding: "6px 14px", borderRadius: "8px", background: sevColor[sev as keyof typeof sevColor] + "15", border: `1px solid ${sevColor[sev as keyof typeof sevColor]}30` }}>
                         <span style={{ fontSize: "16px", fontWeight: 800, color: sevColor[sev as keyof typeof sevColor] }}>{count}</span>
@@ -601,4 +619,4 @@ export default function GodModeDashboard() {
       </div>
     </div>
   );
-}
+                                              }
