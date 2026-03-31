@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 
 const STATS = [
   { value: "100%", label: "of vibe-coded apps have OWASP vulnerabilities", source: "Columbia University" },
@@ -12,7 +12,7 @@ const STATS = [
 
 const PIPELINE_STEPS = [
   {
-    icon: "ð¯", title: "Spec Engine", desc: "Force structured requirements before AI writes a single line. No more 'build me an app' prompts.",
+    icon: "🎯", title: "Spec Engine", desc: "Force structured requirements before AI writes a single line. No more 'build me an app' prompts.",
     color: "#6366f1", detail: "9-step wizard: project type, tech stack, data models, auth, API endpoints, security requirements, edge cases, deployment config.",
   },
   {
@@ -20,15 +20,15 @@ const PIPELINE_STEPS = [
     color: "#8b5cf6", detail: "Your spec becomes a JSON contract. Paste it into any AI. The model doesn't guess — it follows your spec.",
   },
   {
-    icon: "ð¡ï¸", title: "Security Scan", desc: "25+ OWASP-aligned rules catch what every other platform misses. Hardcoded secrets, SQL injection, XSS, SSRF.",
+    icon: "🛡️", title: "Security Scan", desc: "25+ OWASP-aligned rules catch what every other platform misses. Hardcoded secrets, SQL injection, XSS, SSRF.",
     color: "#ef4444", detail: "Every finding: exact line number, severity, explanation, and a concrete fix. Zero CRITICAL vulns or it doesn't ship.",
   },
   {
-    icon: "ð", title: "Code Review", desc: "Senior-developer-level automated review. Logic errors, code smell, tech debt, N+1 queries, anti-patterns.",
+    icon: "🔍", title: "Code Review", desc: "Senior-developer-level automated review. Logic errors, code smell, tech debt, N+1 queries, anti-patterns.",
     color: "#ec4899", detail: "30+ rules across 7 categories. Code metrics dashboard. The 91% review bottleneck — eliminated.",
   },
   {
-    icon: "ð", title: "Ship Gate", desc: "Overall score. Pre-ship checklist. Either 'CLEARED FOR DEPLOYMENT' or 'DO NOT SHIP'. No middle ground.",
+    icon: "🚀", title: "Ship Gate", desc: "Overall score. Pre-ship checklist. Either 'CLEARED FOR DEPLOYMENT' or 'DO NOT SHIP'. No middle ground.",
     color: "#22c55e", detail: "Weighted score: 50% security, 30% code quality, 20% spec completeness. Your code earns the right to deploy.",
   },
 ];
@@ -42,21 +42,16 @@ const COMPETITORS = [
   { name: "GodMode", spec: true, secScan: true, codeReview: true, shipGate: true, price: "Free" },
 ];
 
-function AnimatedCounter({ target, suffix = "" }: { target: string; suffix?: string }) {
-  const [display, setDisplay] = useState(target);
-  return <span>{display}{suffix}</span>;
-}
-
 export default function LandingPage() {
   const [expandedStep, setExpandedStep] = useState<number | null>(null);
 
   return (
     <div className="min-h-screen bg-[#020617]">
       {/* Nav */}
-      <nav className="border-b border-[#1e293b] px-6 py-4">
+      <nav className="border-b border-[#1e293b] px-6 py-4" aria-label="Main navigation">
         <div className="max-w-6xl mx-auto flex justify-between items-center">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 via-pink-500 to-red-500 flex items-center justify-center text-sm">⚡</div>
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 via-pink-500 to-red-500 flex items-center justify-center text-sm" role="img" aria-label="GodMode logo">⚡</div>
             <span className="text-lg font-extrabold bg-gradient-to-r from-indigo-400 via-pink-400 to-red-400 bg-clip-text text-transparent">GodMode</span>
           </div>
           <div className="flex items-center gap-4">
@@ -121,6 +116,8 @@ export default function LandingPage() {
                 key={i}
                 onClick={() => setExpandedStep(expandedStep === i ? null : i)}
                 className="w-full text-left"
+                aria-expanded={expandedStep === i}
+                aria-label={`Stage ${i + 1}: ${step.title}`}
               >
                 <div
                   className="rounded-xl border p-5 transition-all"
@@ -186,7 +183,7 @@ export default function LandingPage() {
                     {[c.spec, c.secScan, c.codeReview, c.shipGate].map((val, j) => (
                       <td key={j} className="text-center py-3 px-4">
                         {val === true ? <span className="text-green-400">✅</span> :
-                         val === "Partial" ? <span className="text-yellow-400">⚠ï¸</span> :
+                         val === "Partial" ? <span className="text-yellow-400">⚠️</span> :
                          <span className="text-red-400">❌</span>}
                       </td>
                     ))}
