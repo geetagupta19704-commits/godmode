@@ -112,7 +112,7 @@ export default function AuthPage() {
               type="submit" disabled={loading}
               className="w-full py-3 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-bold text-sm transition disabled:opacity-50"
             >
-              {loading ? "..." : mode === "signap" ? "Create Account" : "Sign In"}
+              {loading ? "..." : mode === "signup" ? "Create Account" : "Sign In"}
             </button>
           </form>
 
